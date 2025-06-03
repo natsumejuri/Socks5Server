@@ -5,7 +5,10 @@ def handle_client(client_socket):
     try:
         #协商阶段，仅接受0x00连接方式
         ver,nmethods=struct.unpack("!BB",client_socket.recv(2))
-        assert ver==5
+        if ver!=5:
+            client_socket.sendall(b"\x05\xFF")
+            client_socket.close()
+            return
         methods=client_socket.recv(nmethods)
 
         if 0x00 not in methods:
@@ -15,7 +18,6 @@ def handle_client(client_socket):
         client_socket.sendall(b"\x05\x00")
         #请求阶段,仅接受CONNECT命令
         ver,cmd,rev,atyp=struct.unpack("!BBBB",client_socket.recv(4))
-        assert ver==5
 
         if atyp==1:
             addr=socket.inet_ntoa(client_socket.recv(4))
@@ -65,6 +67,8 @@ def forward_data(sock1,sock2):
                 dst.sendall(data)
          except Exception as e:
                print(f"转发期间发生异常: {e}")
+        #记住这个bug，两个线程之间对 socket 的关闭操作发生了竞争
+         """
          finally:
             try:
                 src.shutdown(socket.SHUT_RDWR)
@@ -76,13 +80,20 @@ def forward_data(sock1,sock2):
                 pass
             src.close()
             dst.close()
+        """
     t1=threading.Thread(target=forward,args=(sock1,sock2))
     t2=threading.Thread(target=forward,args=(sock2,sock1))
     t1.start()
     t2.start()
     t1.join()
     t2.join()
-            
+    #统一关闭socket
+    for s in (sock1, sock2):
+        try:
+            s.shutdown(socket.SHUT_RDWR)
+        except:
+            pass
+        s.close()            
 host='0.0.0.0'
 port=1080
 server=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
