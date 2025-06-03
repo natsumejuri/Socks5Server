@@ -63,15 +63,25 @@ def forward_data(sock1,sock2):
                 if not data:
                     break
                 dst.sendall(data)
-         except:
-            pass
+         except Exception as e:
+               print(f"转发期间发生异常: {e}")
          finally:
-             src.close()
-             dst.close()
+            try:
+                src.shutdown(socket.SHUT_RDWR)
+            except:
+                pass
+            try:
+                dst.shutdown(socket.SHUT_RDWR)
+            except:
+                pass
+            src.close()
+            dst.close()
     t1=threading.Thread(target=forward,args=(sock1,sock2))
     t2=threading.Thread(target=forward,args=(sock2,sock1))
     t1.start()
     t2.start()
+    t1.join()
+    t2.join()
             
 host='0.0.0.0'
 port=1080
