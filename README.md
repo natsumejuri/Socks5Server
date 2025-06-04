@@ -5,7 +5,7 @@ Socks5服务端，目前还在完善中
 
 使用 `curl` 克隆本项目到本地：
 
-```bash
+```
 curl -O https://raw.githubusercontent.com/Natsumejuri/Socks5Server/main/socks5.py
 ```
 ## 2. 启动服务端
@@ -15,7 +15,6 @@ curl -O https://raw.githubusercontent.com/Natsumejuri/Socks5Server/main/socks5.p
 然后在项目目录下运行：
 
 ```
-bash
 python socks5.py
 ```
 
