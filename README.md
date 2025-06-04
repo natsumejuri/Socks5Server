@@ -3,7 +3,7 @@ Socks5服务端，目前还在完善中
 
 ## 1. 下载文件
 
-使用 `curl` 克隆本项目到本地：
+使用 `curl` 下载本项目到本地：
 
 ```
 curl -O https://raw.githubusercontent.com/Natsumejuri/Socks5Server/main/socks5.py
