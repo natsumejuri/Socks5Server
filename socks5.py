@@ -67,20 +67,6 @@ def forward_data(sock1,sock2):
                 dst.sendall(data)
          except Exception as e:
                print(f"转发期间发生异常: {e}")
-        #记住这个bug，两个线程之间对 socket 的关闭操作发生了竞争
-         """
-         finally:
-            try:
-                src.shutdown(socket.SHUT_RDWR)
-            except:
-                pass
-            try:
-                dst.shutdown(socket.SHUT_RDWR)
-            except:
-                pass
-            src.close()
-            dst.close()
-        """
     t1=threading.Thread(target=forward,args=(sock1,sock2))
     t2=threading.Thread(target=forward,args=(sock2,sock1))
     t1.start()
