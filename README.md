@@ -17,6 +17,9 @@ curl -O https://raw.githubusercontent.com/Natsumejuri/Socks5Server/main/socks5.p
 python socks5.py
 ```
 在第一次运行中，程序会在你的工作目录下生成一个配置文件`config.json`，其中包含了  
+`PORT`:监听端口  
+`MAX_CONNECTIONS`:最大连接数  
+`USERS`:用户名和密码  
 
 ```json
 {
