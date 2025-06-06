@@ -4,8 +4,6 @@ import struct
 import json
 import os
 
-config='config.json'
-
 default_config={
     "PORT":1080,
     "MAX_CONNECTIONS":100,
@@ -13,10 +11,13 @@ default_config={
 }
 
 #第一次启动时初始化配置文件
-if not os.path.exists(config):
-    with open(config,'w',encoding='utf-8') as f:
+script_dir = os.path.dirname(os.path.abspath(__file__))
+config_path = os.path.join(script_dir, "config.json")
+
+if not os.path.exists(config_path):
+    with open(config_path,'w',encoding='utf-8') as f:
         json.dump(default_config,f,indent=4)
-with open(config,'r',encoding='utf-8') as f:
+with open(config_path,'r',encoding='utf-8') as f:
     config=json.load(f)
 PORT=config.get("PORT")
 MAX_CONNECTIONS=config.get("MAX_CONNECTIONS")
@@ -41,7 +42,7 @@ def handle_client(client_socket):
             ulen=client_socket.recv(1)[0]
             uname=client_socket.recv(ulen).decode()
             plen=client_socket.recv(1)[0]
-            passwd=client_socket(plen).decode
+            passwd=client_socket.recv(plen).decode()
 
             if USER.get(uname)==passwd:
                 client_socket.sendall(b"\x01\x00")
