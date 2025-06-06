@@ -2,7 +2,7 @@
 Socks5服务端，用于代理转发流量，使得内部网中的前端机器变得能够访问Internet网中的服务器
 ## 1. 下载文件
 
-选择一个能连接互联网的服务器，使用 `curl` 下载本项目到服务器上：
+选择一个能连接互联网的服务器，在服务器上使用 `curl` 下载本项目：
 
 ```bash
 curl -O https://raw.githubusercontent.com/Natsumejuri/Socks5Server/main/socks5.py
