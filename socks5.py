@@ -1,9 +1,30 @@
 import socket
 import threading
 import struct
+import json
+import os
+
+config='config.json'
+
+default_config={
+    "PORT":1080,
+    "MAX_CONNECTIONS":100,
+    "USERS":[]
+}
+
+#第一次启动时初始化配置文件
+if not os.path.exists(config):
+    with open(config,'w',encoding='utf-8') as f:
+        json.dump(default_config,f,indent=4)
+with open(config,'r',encoding='utf-8') as f:
+    config=json.load(f)
+PORT=config.get("PORT")
+MAX_CONNECTIONS=config.get("MAX_CONNECTIONS")
+USER={u["username"]:u["password"] for u in config.get("USERS",[])}
+
 def handle_client(client_socket):
     try:
-        #协商阶段，仅接受0x00连接方式
+        #协商阶段
         ver,nmethods=struct.unpack("!BB",client_socket.recv(2))
         if ver!=5:
             client_socket.sendall(b"\x05\xFF")
@@ -11,11 +32,30 @@ def handle_client(client_socket):
             return
         methods=client_socket.recv(nmethods)
 
-        if 0x00 not in methods:
+        if 0x00 in methods:
+            client_socket.sendall(b"\x05\x00")
+            
+        elif 0x02 in methods:
+            client_socket.sendall(b"\x05\x02")
+            ver=client_socket.recv(1)[0]
+            ulen=client_socket.recv(1)[0]
+            uname=client_socket.recv(ulen).decode()
+            plen=client_socket.recv(1)[0]
+            passwd=client_socket(plen).decode
+
+            if USER.get(uname)==passwd:
+                client_socket.sendall(b"\x01\x00")
+            else:
+                client_socket.sendall(b"\x01\x01")
+                client_socket.close()
+                return
+            
+        else :
             client_socket.sendall(b"\x05\xFF")
             client_socket.close()
             return
-        client_socket.sendall(b"\x05\x00")
+
+
         #请求阶段,仅接受CONNECT命令
         ver,cmd,rev,atyp=struct.unpack("!BBBB",client_socket.recv(4))
 
@@ -79,12 +119,14 @@ def forward_data(sock1,sock2):
             s.shutdown(socket.SHUT_RDWR)
         except:
             pass
-        s.close()            
+        s.close()  
+
+          
 host='0.0.0.0'
 port=1080
 server=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-server.bind((host,port))
-server.listen(100)
+server.bind((host,PORT))
+server.listen(MAX_CONNECTIONS)
 print(f"正在监听{host}:{port}")
 while True:
     client_socket,addr=server.accept()
