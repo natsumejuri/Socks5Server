@@ -27,11 +27,11 @@ python socks5.py
 }
 ```
 若想添加用户验证，请在USERS内添加字典，每个字典请以`,`半角逗号隔开  
-```
+```json
 {
-    "port": 1080,
-    "max_connections": 100,
-    "users": [
+    "PORT": 1080,
+    "MAX_CONNECTIONS": 100,
+    "USERS": [
         {"username": "user1", "password": "pass1"}
     ]
 }
