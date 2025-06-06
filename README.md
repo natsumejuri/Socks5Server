@@ -38,4 +38,17 @@ python socks5.py
 ```
 其中`user1`改为你想设定的用户名，`pass1`改为你想设定的密码  
 
+本程序支持多用户，每个字典组以`,`半角逗号隔开以添加新用户  
+```json
+{
+    "PORT": 1080,
+    "MAX_CONNECTIONS": 100,
+    "USERS": [
+        {"username": "user1", "password": "pass1"},
+        {"username": "user2", "password": "pass2"}
+    ]
+}
+
+```
+
 最后，服务端启动成功时，你可以拿任何支持Socks5协议的客户端使用Socks5服务器代理流量。
