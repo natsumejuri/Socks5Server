@@ -123,11 +123,10 @@ def forward_data(sock1,sock2):
 
           
 host='0.0.0.0'
-port=1080
 server=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 server.bind((host,PORT))
 server.listen(MAX_CONNECTIONS)
-print(f"正在监听{host}:{port}")
+print(f"正在监听{host}:{PORT}")
 while True:
     client_socket,addr=server.accept()
     threading.Thread(target=handle_client,args=(client_socket,)).start()
