@@ -7,7 +7,7 @@ import sys
 
 default_config={
     "PORT":1080,
-    "MAX_CONNECTIONS":100,
+    "MAX_CONN":100,
     "USERS":[]
 }
 
@@ -20,6 +20,7 @@ if not os.path.exists(config_path):
         json.dump(default_config,f,indent=4)
     print(f"[info] Configuration file '{config_path}' does not exist. A default configuration has been created. Please modify it and run again.")
     sys.exit(0)
+
 #读取文件
 try:
     with open(config_path,'r',encoding='utf-8') as f:
@@ -28,8 +29,14 @@ except json.JSONDecodeError as e:
     print(f"[error] Configuration file format error: {e}")
     sys.exit(1)
 
+#验证文件完整性
+for key in ["PORT","MAX_CONN","USERS"]:
+            if key not in config:
+                print(f"[error] Missing configuration field: '{key}'")
+                sys.exit(1)
+
 PORT=config.get("PORT")
-MAX_CONNECTIONS=config.get("MAX_CONNECTIONS")
+MAX_CONN=config.get("MAX_CONN")
 USER={u["username"]:u["password"] for u in config.get("USERS",[])}
 
 def handle_client(client_socket):
@@ -140,7 +147,7 @@ def main():
     host='0.0.0.0'
     server=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
     server.bind((host,PORT))
-    server.listen(MAX_CONNECTIONS)
+    server.listen(MAX_CONN)
     print(f"Listening on {host}:{PORT}")
     while True:
         client_socket=server.accept()[0]
