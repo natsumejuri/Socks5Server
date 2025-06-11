@@ -3,6 +3,7 @@ import threading
 import struct
 import json
 import os
+import sys
 
 default_config={
     "PORT":1080,
@@ -17,8 +18,16 @@ config_path = os.path.join(script_dir, "config.json")
 if not os.path.exists(config_path):
     with open(config_path,'w',encoding='utf-8') as f:
         json.dump(default_config,f,indent=4)
-with open(config_path,'r',encoding='utf-8') as f:
-    config=json.load(f)
+    print(f"[info] Configuration file '{config_path}' does not exist. A default configuration has been created. Please modify it and run again.")
+    sys.exit(0)
+#读取文件
+try:
+    with open(config_path,'r',encoding='utf-8') as f:
+        config=json.load(f)
+except json.JSONDecodeError as e:
+    print(f"[error] Configuration file format error: {e}")
+    sys.exit(1)
+
 PORT=config.get("PORT")
 MAX_CONNECTIONS=config.get("MAX_CONNECTIONS")
 USER={u["username"]:u["password"] for u in config.get("USERS",[])}
@@ -65,6 +74,9 @@ def handle_client(client_socket):
         elif atyp==3:
             length=client_socket.recv(1)[0]
             addr=client_socket.recv(length).decode()
+        elif atyp==4:
+            ipv6=client_socket.recv(16)
+            addr=socket.inet_ntop(socket.AF_INET6,ipv6)
         else:
            client_socket.close()
            return
@@ -72,7 +84,6 @@ def handle_client(client_socket):
         
         if cmd==1:
             try:
-               print(f"目标地址：{addr}:{port}")
                remote = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                remote.connect((addr, port))
                bind_address = remote.getsockname()
@@ -98,6 +109,8 @@ def handle_client(client_socket):
         print(f"Exception as {e}")
     finally:
         client_socket.close()
+
+#流量转发
 def forward_data(sock1,sock2):
     def forward(src,dst):
          try:
@@ -122,12 +135,16 @@ def forward_data(sock1,sock2):
             pass
         s.close()  
 
-          
-host='0.0.0.0'
-server=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-server.bind((host,PORT))
-server.listen(MAX_CONNECTIONS)
-print(f"正在监听{host}:{PORT}")
-while True:
-    client_socket,addr=server.accept()
-    threading.Thread(target=handle_client,args=(client_socket,)).start()
+#主函数
+def main():         
+    host='0.0.0.0'
+    server=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+    server.bind((host,PORT))
+    server.listen(MAX_CONNECTIONS)
+    print(f"正在监听{host}:{PORT}")
+    while True:
+        client_socket=server.accept()[0]
+        threading.Thread(target=handle_client,args=(client_socket,)).start()
+
+if __name__ == "__main__":
+    main()
