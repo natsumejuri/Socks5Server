@@ -43,7 +43,7 @@ USER={u["username"]:u["password"] for u in config.get("USERS",[])}
 def handle_client(client_socket):
     try:
         #协商阶段
-        ver,nmethods=struct.unpack("!BB",)
+        ver,nmethods=struct.unpack("!BB",client_socket.recv(2))
         if ver!=5:
             client_socket.sendall(b"\x05\xFF")
             client_socket.close()
