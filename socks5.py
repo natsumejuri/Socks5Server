@@ -106,7 +106,7 @@ def handle_client(client_socket):
         forward_data(client_socket,remote)
         
     except Exception as e:
-        print(f"Exception as {e}")
+        print(f"[error] Exception as {e}")
     finally:
         client_socket.close()
 
@@ -120,7 +120,7 @@ def forward_data(sock1,sock2):
                     break
                 dst.sendall(data)
          except Exception as e:
-               print(f"转发期间发生异常: {e}")
+               print(f"[error] Exception occurred during forwarding: {e}")
     t1=threading.Thread(target=forward,args=(sock1,sock2))
     t2=threading.Thread(target=forward,args=(sock2,sock1))
     t1.start()
@@ -141,7 +141,7 @@ def main():
     server=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
     server.bind((host,PORT))
     server.listen(MAX_CONNECTIONS)
-    print(f"正在监听{host}:{PORT}")
+    print(f"Listening on {host}:{PORT}")
     while True:
         client_socket=server.accept()[0]
         threading.Thread(target=handle_client,args=(client_socket,)).start()
