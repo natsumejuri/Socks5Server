@@ -4,6 +4,7 @@ import struct
 import json
 import os
 import sys
+import asyncio
 
 default_config={
     "PORT":1080,
@@ -42,7 +43,7 @@ USER={u["username"]:u["password"] for u in config.get("USERS",[])}
 def handle_client(client_socket):
     try:
         #协商阶段
-        ver,nmethods=struct.unpack("!BB",client_socket.recv(2))
+        ver,nmethods=struct.unpack("!BB",)
         if ver!=5:
             client_socket.sendall(b"\x05\xFF")
             client_socket.close()
@@ -73,7 +74,7 @@ def handle_client(client_socket):
             return
 
 
-        #请求阶段,仅接受CONNECT命令
+        #请求阶段,接受CONNECT命令和UDP ASSOCIATE命令
         ver,cmd,rev,atyp=struct.unpack("!BBBB",client_socket.recv(4))
 
         if atyp==1:
@@ -93,47 +94,63 @@ def handle_client(client_socket):
             try:
                remote = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                remote.connect((addr, port))
-               bind_address = remote.getsockname()
+               bind_address = remote.getsockname() 
                address = struct.unpack("!I", socket.inet_aton(bind_address[0]))[0]
                port = bind_address[1]
                reply = struct.pack("!BBBBIH", 5, 0, 0, 1, address, port)
                client_socket.sendall(reply)
             except Exception as e:
+               print(f"[error] TCP connection failed: {e}")
                reply=b"\x05\x01\x00\x01\x00\x00\x00\x00\x00\x00"
                client_socket.sendall(reply)
                client_socket.close()
                return
+            asyncio.run(forward_data(client_socket, remote))
+
+        elif cmd==3:
+            try:
+                udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                udp_sock.bind(('0.0.0.0', 0)) 
+                udp_host, udp_port = udp_sock.getsockname()
+                print(f"[udp] Started UDP relay on {udp_host}:{udp_port}")
+                address = struct.unpack("!I", socket.inet_aton(udp_host))[0]
+                reply = struct.pack("!BBBBIH", 5, 0, 0, 1, address, udp_port)
+                client_socket.sendall(reply)
+                client_socket.close() 
+            except Exception as e :
+                print(f"[error] UDP associate failed: {e}")
+                client_socket.close()
+                return
+            asyncio.run(udp_associate(udp_sock))
         else:
             reply=b"\x05\x07\x00\x01\x00\x00\x00\x00\x00\x00"
             client_socket.sendall(reply)
             client_socket.close()
             return
-        
-        
-        forward_data(client_socket,remote)
-        
+           
     except Exception as e:
         print(f"[error] Exception as {e}")
     finally:
         client_socket.close()
 
-#流量转发
-def forward_data(sock1,sock2):
-    def forward(src,dst):
-         try:
-            while True:
-                data=src.recv(4096)
-                if not data:
-                    break
-                dst.sendall(data)
-         except Exception as e:
+#TCP流量转发
+async def forward(src,dst,loop):
+    try:
+        while True:
+            data=await loop.sock_recv(src,4096)
+            if not data:
+                break
+            await loop.sock_sendall(dst,data)
+    except Exception as e:
                print(f"[error] Exception occurred during forwarding: {e}")
-    t1=threading.Thread(target=forward,args=(sock1,sock2))
-    t2=threading.Thread(target=forward,args=(sock2,sock1))
-    t1.start()
-    t2.start()
-    t1.join()
-    t2.join()
+
+#TCP协程管理
+async def forward_data(sock1,sock2):
+    loop=asyncio.get_running_loop()
+    t1=asyncio.create_task(forward(sock1,sock2,loop))
+    t2=asyncio.create_task(forward(sock2,sock1,loop))
+    await asyncio.gather(t1,t2)
+
     #统一关闭socket
     for s in (sock1, sock2):
         try:
@@ -142,13 +159,56 @@ def forward_data(sock1,sock2):
             pass
         s.close()  
 
+#UDP
+async def udp_associate(udp_sock):
+    loop=asyncio.get_running_loop()
+    udp_sock.setblocking(False)
+
+    while True:
+        try:
+            data,addr=await loop.sock_recvfrom(udp_sock,65535)
+
+            rsv,frag,atyp=struct.unpack("!HBB",data[:4])
+            if frag!=0:
+                continue
+
+            if atyp==1:
+                dst_ip=socket.inet_ntoa(data[4:8])
+                dst_port=struct.unpack("!H",data[8:10])[0]
+                load=data[10:]
+            if atyp==3:
+                domain_len= data[4]
+                dst_ip= data[5:5+domain_len].decode()
+                dst_port=struct.unpack("!H", data[5+domain_len:7+domain_len])[0]
+                load =data[7+domain_len:]
+            else:
+                continue
+
+            remote_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            remote_sock.sendto(load, (dst_ip, dst_port))
+
+            # 接收响应
+            remote_sock.settimeout(2)
+            try:
+                resp_data, _ = remote_sock.recvfrom(65535)
+            except socket.timeout:
+                continue
+
+            # 封装 SOCKS5 UDP 响应
+            resp_packet = b'\x00\x00\x01' + socket.inet_aton(dst_ip) + struct.pack('!H', dst_port) + resp_data
+            await loop.sock_sendto(udp_sock, resp_packet, addr)
+
+        except Exception as e:
+            print(f"[udp] Exception: {e}")
+
 #主函数
 def main():         
-    host='0.0.0.0'
     server=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-    server.bind((host,PORT))
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server.bind(('0.0.0.0',PORT))
     server.listen(MAX_CONN)
-    print(f"Listening on {host}:{PORT}")
+    print(f"Listening on 0.0.0.0:{PORT}")
+    
     while True:
         client_socket=server.accept()[0]
         threading.Thread(target=handle_client,args=(client_socket,)).start()
