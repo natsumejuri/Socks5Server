@@ -60,9 +60,3 @@ python socks5.py
 ```
 
 最后，服务端启动成功时，你可以拿任何支持Socks5协议的客户端使用Socks5服务器代理流量。  
-
-## 鸣谢
-开发过程中给予本人重大帮助的资料：  
-[理解socks5协议的工作过程和协议细节 by Bigbyto](https://wiyi.org/socks5-protocol-in-deep.html)  
-[码农高天-YouTube](https://www.youtube.com/@minkoder)  
-
